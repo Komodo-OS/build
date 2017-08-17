@@ -147,6 +147,13 @@ function check_product()
         echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
         return
     fi
+    if (echo -n $1 | grep -q -e "^komodo_") ; then
+        KOMODO_BUILD=$(echo -n $1 | sed -e 's/^komodo_//g')
+    else
+        KOMODO_BUILD=
+    fi
+    export KOMODO_BUILD
+
         TARGET_PRODUCT=$1 \
         TARGET_BUILD_VARIANT= \
         TARGET_BUILD_TYPE= \
@@ -695,6 +702,8 @@ function lunch()
         echo "Invalid lunch combo: $selection"
         return 1
     fi
+
+    check_product $product
 
     TARGET_PRODUCT=$product \
     TARGET_BUILD_VARIANT=$variant \
@@ -1850,5 +1859,5 @@ export ANDROID_BUILD_TOP=$(gettop)
 
 function repopick() {
     T=$(gettop)
-    $T/vendor/bianca/build/tools/repopick.py $@
+    $T/vendor/komodo/build/tools/repopick.py $@
 }
