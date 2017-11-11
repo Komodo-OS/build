@@ -468,7 +468,7 @@ class Payload(object):
     """Writes the payload to the given zip.
 
     Args:
-      output_zip: The output ZipFile instance.
+       output_zip: The output ZipFile instance.
     """
     assert self.payload_file is not None
     assert self.payload_properties is not None
@@ -822,6 +822,31 @@ else if get_stage("%(bcb_dev)s") == "3/3" then
   # Dump fingerprints
   script.Print("Target: {}".format(target_info.fingerprint))
 
+  android_version = target_info.GetBuildProp("ro.build.version.release")
+  build_id = target_info.GetBuildProp("ro.build.id")
+  build_date = target_info.GetBuildProp("org.komodo.build_date")
+  security_patch = target_info.GetBuildProp("ro.build.version.security_patch")
+  device = target_info.GetBuildProp("org.komodo.device")
+  script.Print("----------------------------------------------");
+  script.Print("");
+  script.Print("       __ ______  __  _______  ____  ____  ");
+  script.Print("      / //_/ __ \/  |/  / __ \/ __ \/ __ \ ");
+  script.Print("     / ,< / / / / /|_/ / / / / / / / / / / ");
+  script.Print("    / /| / /_/ / /  / / /_/ / /_/ / /_/ /  ");
+  script.Print("   /_/ |_\____/_/  /_/\____/_____/\____/   ");
+  script.Print("             ______     ______    ");
+  script.Print("            /\  __ \   /\  ___\   ");
+  script.Print("            \ \ \/\ \  \ \___  \  ");
+  script.Print("             \ \_____\  \/\_____\ ");
+  script.Print("              \/_____/   \/_____/ ");
+  script.Print("");
+  script.Print("----------------------------------------------");
+  script.Print(" Android version: %s"%(android_version));
+  script.Print(" Build id: %s"%(build_id));
+  script.Print(" Build date: %s"%(build_date));
+  script.Print(" Security patch: %s"%(security_patch));
+  script.Print(" Device: %s"%(device));
+  script.Print("----------------------------------------------");
   device_specific.FullOTA_InstallBegin()
 
   CopyInstallTools(output_zip)
