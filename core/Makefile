@@ -415,7 +415,7 @@ endif
 	$(hide) TARGET_BUILD_TYPE="$(TARGET_BUILD_VARIANT)" \
 	        TARGET_BUILD_FLAVOR="$(TARGET_BUILD_FLAVOR)" \
 	        TARGET_DEVICE="$(TARGET_DEVICE)" \
-	        CUSTOM_BUILD="$(CUSTOM_BUILD)" \
+	        KOMODO_BUILD="$(KOMODO_BUILD)" \
 	        PRODUCT_NAME="$(TARGET_PRODUCT)" \
 	        PRODUCT_BRAND="$(PRODUCT_BRAND)" \
 	        PRODUCT_DEFAULT_LOCALE="$(call get-default-product-locale,$(PRODUCT_LOCALES))" \
@@ -1912,6 +1912,7 @@ RECOVERYIMAGE_ID_FILE := $(PRODUCT_OUT)/recovery.id
 define build-recoveryramdisk
   @echo ${CL_GRN}"----- Generating Changelog ------"${CL_RST}
   $(hide) ./vendor/komodo/tools/changelog.sh
+  #$(hide) mv $(PRODUCT_OUT)/Changelog.txt $(PRODUCT_OUT)/$(KOMODO_VERSION)-Changelog.txt
   @echo ----- Making recovery image ------
   $(hide) mkdir -p $(TARGET_RECOVERY_OUT)
   $(hide) mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/sdcard $(TARGET_RECOVERY_ROOT_OUT)/tmp
@@ -2337,7 +2338,8 @@ endif
 
 # $(1): output file
 define build-systemimage-target
-  $(hide) ./vendor/komodo/tools/changelog.sh
+ # $(hide) ./vendor/komodo/tools/changelog.sh
+ # $(hide) mv $(PRODUCT_OUT)/Changelog.txt $(PRODUCT_OUT)/$(KOMODO_VERSION)-Changelog.txt
   @echo "Target system fs image: $(1)"
   $(call create-system-vendor-symlink)
   $(call create-system-product-symlink)
@@ -4300,7 +4302,7 @@ else
     OTA_SCRIPT_OVERRIDE_DEVICE := $(TARGET_OTA_ASSERT_DEVICE)
 endif
 
-ifneq ($(CUSTOM_BUILD),)
+ifneq ($(KOMODO_BUILD),)
     $(INTERNAL_OTA_PACKAGE_TARGET): backuptool := false
 else
     $(INTERNAL_OTA_PACKAGE_TARGET): backuptool := false
