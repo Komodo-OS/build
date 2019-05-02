@@ -415,7 +415,7 @@ endif
 	$(hide) TARGET_BUILD_TYPE="$(TARGET_BUILD_VARIANT)" \
 	        TARGET_BUILD_FLAVOR="$(TARGET_BUILD_FLAVOR)" \
 	        TARGET_DEVICE="$(TARGET_DEVICE)" \
-		KOMODO_DEVICE="$(TARGET_DEVICE)" \
+	        KOMODO_BUILD="$(KOMODO_BUILD)" \
 	        PRODUCT_NAME="$(TARGET_PRODUCT)" \
 	        PRODUCT_BRAND="$(PRODUCT_BRAND)" \
 	        PRODUCT_DEFAULT_LOCALE="$(call get-default-product-locale,$(PRODUCT_LOCALES))" \
@@ -886,8 +886,8 @@ $(call dist-for-goals, sdk win_sdk sdk_addon, $(INSTALLED_FILES_FILE_ROOT))
 ifdef BOARD_INCLUDE_DTB_IN_BOOTIMG
 INSTALLED_DTBIMAGE_TARGET := $(PRODUCT_OUT)/dtb.img
 ifdef BOARD_PREBUILT_DTBIMAGE_DIR
-$(INSTALLED_DTBIMAGE_TARGET): $(BOARD_PREBUILT_DTBIMAGE_DIR)
-	cat $(shell find $(BOARD_PREBUILT_DTBIMAGE_DIR) -type f -name "*.dtb" | sort) > $@
+$(INSTALLED_DTBIMAGE_TARGET) : $(sort $(wildcard $(BOARD_PREBUILT_DTBIMAGE_DIR)/*.dtb))
+	cat $^ > $@
 endif
 endif
 
@@ -896,12 +896,13 @@ endif
 ifdef BUILDING_RAMDISK_IMAGE
 BOOT_RAMDISK_COMPRESSOR := $(MINIGZIP)
 RECOVERY_RAMDISK_COMPRESSOR := $(MINIGZIP)
+LZMA := prebuilts/tools-custom/${HOST_OS}-x86/bin/lzma
 ifneq ($(LZMA_RAMDISK_TARGETS),)
   ifneq (,$(findstring boot,$(LZMA_RAMDISK_TARGETS)))
-    BOOT_RAMDISK_COMPRESSOR := lzma -f -c
+    BOOT_RAMDISK_COMPRESSOR := $(LZMA) -f -c
   endif
   ifneq (,$(findstring recovery,$(LZMA_RAMDISK_TARGETS)))
-    RECOVERY_RAMDISK_COMPRESSOR := lzma -f -c
+    RECOVERY_RAMDISK_COMPRESSOR := $(LZMA) -f -c
     TARGET_NOT_USE_GZIP_RECOVERY_RAMDISK := true
   endif
 endif
@@ -937,6 +938,7 @@ ramdisk-nodeps: $(MKBOOTFS) | $(MINIGZIP)
 
 endif # BUILDING_RAMDISK_IMAGE
 
+
 INSTALLED_BOOTIMAGE_TARGET := $(PRODUCT_OUT)/boot.img
 
 ifneq ($(strip $(TARGET_NO_KERNEL)),true)
@@ -969,7 +971,6 @@ ifeq ($(PRODUCT_SUPPORTS_VERITY),true)
 ifeq ($(BOARD_BUILD_SYSTEM_ROOT_IMAGE),true)
 VERITY_KEYID := veritykeyid=id:`openssl x509 -in $(PRODUCT_VERITY_SIGNING_KEY).x509.pem -text \
                 | grep keyid | sed 's/://g' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]' | sed 's/keyid//g'`
-#`
 endif
 endif
 
@@ -1617,6 +1618,9 @@ recovery_ramdisk := $(PRODUCT_OUT)/ramdisk-recovery.img
 recovery_uncompressed_ramdisk := $(PRODUCT_OUT)/ramdisk-recovery.cpio
 recovery_resources_common := $(call include-path-for, recovery)/res
 
+ifneq (,$(TARGET_RECOVERY_DENSITY))
+recovery_density := $(filter %dpi,$(TARGET_RECOVERY_DENSITY))
+else
 # Set recovery_density to a density bucket based on TARGET_SCREEN_DENSITY, PRODUCT_AAPT_PREF_CONFIG,
 # or mdpi, in order of preference. We support both specific buckets (e.g. xdpi) and numbers,
 # which get remapped to a bucket.
@@ -1631,6 +1635,7 @@ recovery_density := $(strip \
        $(if $(filter $(shell echo $$(($(recovery_density_value) >= 400))),1),xxhdpi),\
        $(if $(filter $(shell echo $$(($(recovery_density_value) >= 280))),1),xhdpi),\
        $(if $(filter $(shell echo $$(($(recovery_density_value) >= 200))),1),hdpi,mdpi)))
+endif
 endif
 
 ifneq (,$(wildcard $(recovery_resources_common)-$(recovery_density)))
@@ -1647,6 +1652,7 @@ recovery_font := $(call include-path-for, recovery)/fonts/18x32.png
 else
 recovery_font := $(call include-path-for, recovery)/fonts/12x22.png
 endif
+
 
 # We will only generate the recovery background text images if the variable
 # TARGET_RECOVERY_UI_SCREEN_WIDTH is defined. For devices with xxxhdpi and xxhdpi, we set the
@@ -1745,13 +1751,13 @@ RECOVERY_WIPE_DATA_MENU_HEADER_TEXT_FILE :=
 endif # TARGET_RECOVERY_UI_SCREEN_WIDTH
 
 ifneq ($(TARGET_RECOVERY_DEVICE_DIRS),)
-		recovery_root_private := $(strip \
-				  $(foreach d,$(TARGET_RECOVERY_DEVICE_DIRS), $(wildcard $(d)/recovery/root)))
-		else
+recovery_root_private := $(strip \
+  $(foreach d,$(TARGET_RECOVERY_DEVICE_DIRS), $(wildcard $(d)/recovery/root)))
+else
 recovery_root_private := $(strip $(wildcard $(TARGET_DEVICE_DIR)/recovery/root))
 endif
 ifneq ($(recovery_root_private),)
-		recovery_root_deps := $(shell find $(recovery_root_private) -type f)
+recovery_root_deps := $(shell find $(recovery_root_private) -type f)
 endif
 
 ifndef TARGET_PRIVATE_RES_DIRS
@@ -1805,6 +1811,7 @@ INSTALLED_RECOVERY_BUILD_PROP_TARGET := $(TARGET_RECOVERY_ROOT_OUT)/prop.default
 
 $(INSTALLED_RECOVERY_BUILD_PROP_TARGET): PRIVATE_RECOVERY_UI_PROPERTIES := \
     TARGET_RECOVERY_UI_ANIMATION_FPS:animation_fps \
+    TARGET_RECOVERY_UI_BLANK_UNBLANK_ON_INIT:blank_unblank_on_init \
     TARGET_RECOVERY_UI_MARGIN_HEIGHT:margin_height \
     TARGET_RECOVERY_UI_MARGIN_WIDTH:margin_width \
     TARGET_RECOVERY_UI_MENU_UNUSABLE_ROWS:menu_unusable_rows \
@@ -1850,17 +1857,10 @@ $(INSTALLED_RECOVERY_BUILD_PROP_TARGET): \
 	$(hide) cat $(INSTALLED_PRODUCT_SERVICES_BUILD_PROP_TARGET) >> $@
 	$(call append-recovery-ui-properties,$(PRIVATE_RECOVERY_UI_PROPERTIES),$@)
 
-ifneq ($(TARGET_PREBUILT_RECOVERY_RAMDISK_IMG),)
 INTERNAL_RECOVERYIMAGE_ARGS := \
-    $(addprefix --second ,$(INSTALLED_2NDBOOTLOADER_TARGET)) \
-    --kernel $(recovery_kernel) \
-    --ramdisk $(TARGET_PREBUILT_RECOVERY_RAMDISK_IMG)
-else
-INTERNAL_RECOVERYIMAGE_ARGS := \
-    $(addprefix --second ,$(INSTALLED_2NDBOOTLOADER_TARGET)) \
-    --kernel $(recovery_kernel) \
-    --ramdisk $(recovery_ramdisk)
-endif
+	$(addprefix --second ,$(INSTALLED_2NDBOOTLOADER_TARGET)) \
+	--kernel $(recovery_kernel) \
+	--ramdisk $(recovery_ramdisk)
 
 # Assumes this has already been stripped
 ifdef INTERNAL_KERNEL_CMDLINE
@@ -1885,6 +1885,7 @@ endif
 ifdef BOARD_INCLUDE_DTB_IN_BOOTIMG
   INTERNAL_RECOVERYIMAGE_ARGS += --dtb $(INSTALLED_DTBIMAGE_TARGET)
 endif
+
 ifeq ($(strip $(BOARD_KERNEL_SEPARATED_DT)),true)
   INTERNAL_RECOVERYIMAGE_ARGS += --dt $(INSTALLED_DTIMAGE_TARGET)
   RECOVERYIMAGE_EXTRA_DEPS    := $(INSTALLED_DTIMAGE_TARGET)
@@ -1909,14 +1910,14 @@ $(RECOVERY_INSTALL_OTA_KEYS): $(SOONG_ZIP) $(OTA_PUBLIC_KEYS) $(extra_keys)
 RECOVERYIMAGE_ID_FILE := $(PRODUCT_OUT)/recovery.id
 
 define build-recoveryramdisk
-  @echo -e ${CL_GRN}"----- Generating Changelog ------"${CL_RST}
   $(hide) ./vendor/komodo/tools/changelog.sh
+  $(hide) mv $(PRODUCT_OUT)/Changelog.txt $(PRODUCT_OUT)/$(KOMODO_VERSION)-Changelog.txt
   @echo ----- Making recovery image ------
   $(hide) mkdir -p $(TARGET_RECOVERY_OUT)
   $(hide) mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/sdcard $(TARGET_RECOVERY_ROOT_OUT)/tmp
   # Copying baseline ramdisk...
   # Use rsync because "cp -Rf" fails to overwrite broken symlinks on Mac.
-  $(hide) rsync -a --exclude=sdcard --exclude=vendor $(IGNORE_RECOVERY_SEPOLICY) $(IGNORE_CACHE_LINK) $(TARGET_ROOT_OUT) $(TARGET_RECOVERY_OUT)
+  $(hide) rsync -a --exclude=sdcard $(IGNORE_RECOVERY_SEPOLICY) $(IGNORE_CACHE_LINK) $(TARGET_ROOT_OUT) $(TARGET_RECOVERY_OUT)
   # Modifying ramdisk contents...
   $(if $(filter true,$(BOARD_BUILD_SYSTEM_ROOT_IMAGE)),, \
     $(hide) ln -sf /system/bin/init $(TARGET_RECOVERY_ROOT_OUT)/init)
@@ -1944,7 +1945,6 @@ define build-recoveryramdisk
   $(hide) cp $(RECOVERY_INSTALL_OTA_KEYS) $(TARGET_RECOVERY_ROOT_OUT)/system/etc/security/otacerts.zip
   $(hide) ln -sf prop.default $(TARGET_RECOVERY_ROOT_OUT)/default.prop
   $(BOARD_RECOVERY_IMAGE_PREPARE)
-  $(hide) $(MKBOOTFS) -d $(TARGET_OUT) $(TARGET_RECOVERY_ROOT_OUT) | $(MINIGZIP) > $(recovery_ramdisk)
 endef
 
 RECOVERYIMAGE_ID_FILE := $(PRODUCT_OUT)/recovery.id
@@ -2001,7 +2001,7 @@ $(INSTALLED_BOOTIMAGE_TARGET): $(MKBOOTFS) $(MKBOOTIMG) $(MINIGZIP) \
 	    $(recovery_initrc) $(recovery_sepolicy) $(recovery_kernel) \
 	    $(INSTALLED_2NDBOOTLOADER_TARGET) \
 	    $(INSTALLED_RECOVERY_BUILD_PROP_TARGET) \
-	    $(recovery_resource_deps) \
+	    $(recovery_resource_deps) $(recovery_root_deps) \
 	    $(recovery_fstab) \
 	    $(RECOVERY_INSTALL_OTA_KEYS) \
 	    $(BOARD_RECOVERY_KERNEL_MODULES) \
@@ -2026,7 +2026,7 @@ ifdef BOARD_INCLUDE_DTB_IN_BOOTIMG
 $(INSTALLED_RECOVERYIMAGE_TARGET): $(INSTALLED_DTBIMAGE_TARGET)
 endif
 
-$(recovery_uncompressed_ramdisk): $(MKBOOTFS) \
+$(recovery_uncompressed_ramdisk): $(MKBOOTFS) $(ADBD) \
 	    $(INTERNAL_ROOT_FILES) \
 	    $(INSTALLED_RAMDISK_TARGET) \
 	    $(INSTALLED_BOOTIMAGE_TARGET) \
@@ -2034,8 +2034,7 @@ $(recovery_uncompressed_ramdisk): $(MKBOOTFS) \
 	    $(recovery_initrc) $(recovery_sepolicy) \
 	    $(INSTALLED_2NDBOOTLOADER_TARGET) \
 	    $(INSTALLED_RECOVERY_BUILD_PROP_TARGET) \
-	    $(recovery_resource_deps) \
-	    $(recovery_root_deps) \
+	    $(recovery_resource_deps) $(recovery_root_deps) \
 	    $(recovery_fstab) \
 	    $(RECOVERY_INSTALL_OTA_KEYS) \
 	    $(BOARD_RECOVERY_KERNEL_MODULES) \
@@ -2148,7 +2147,7 @@ $(INSTALLED_DEBUG_RAMDISK_TARGET): $(MKBOOTFS) $(INTERNAL_DEBUG_RAMDISK_FILES) |
 	mkdir -p $(TARGET_DEBUG_RAMDISK_OUT)
 	touch $(TARGET_DEBUG_RAMDISK_OUT)/force_debuggable
 	rsync -a $(DEBUG_RAMDISK_SYNC_DIR)/ $(DEBUG_RAMDISK_ROOT_DIR)
-	$(MKBOOTFS) -d $(TARGET_OUT) $(DEBUG_RAMDISK_ROOT_DIR) | $(MINIGZIP) > $@
+	$(MKBOOTFS) -d $(TARGET_OUT) $(DEBUG_RAMDISK_ROOT_DIR) | $(BOOT_RAMDISK_COMPRESSOR) > $@
 
 .PHONY: ramdisk_debug-nodeps
 ramdisk_debug-nodeps: DEBUG_RAMDISK_SYNC_DIR := $(my_debug_ramdisk_sync_dir)
@@ -2158,7 +2157,7 @@ ramdisk_debug-nodeps: $(MKBOOTFS) | $(MINIGZIP)
 	mkdir -p $(TARGET_DEBUG_RAMDISK_OUT)
 	touch $(TARGET_DEBUG_RAMDISK_OUT)/force_debuggable
 	rsync -a $(DEBUG_RAMDISK_SYNC_DIR)/ $(DEBUG_RAMDISK_ROOT_DIR)
-	$(MKBOOTFS) -d $(TARGET_OUT) $(DEBUG_RAMDISK_ROOT_DIR) | $(MINIGZIP) > $(INSTALLED_DEBUG_RAMDISK_TARGET)
+	$(MKBOOTFS) -d $(TARGET_OUT) $(DEBUG_RAMDISK_ROOT_DIR) | $(BOOT_RAMDISK_COMPRESSOR) > $(INSTALLED_DEBUG_RAMDISK_TARGET)
 
 my_debug_ramdisk_sync_dir :=
 my_debug_ramdisk_root_dir :=
@@ -2338,6 +2337,8 @@ endif
 
 # $(1): output file
 define build-systemimage-target
+  $(hide) ./vendor/aosp/tools/changelog.sh
+  $(hide) mv $(PRODUCT_OUT)/Changelog.txt $(PRODUCT_OUT)/$(KOMODO_VERSION)-Changelog.txt
   @echo "Target system fs image: $(1)"
   $(call create-system-vendor-symlink)
   $(call create-system-product-symlink)
@@ -3065,12 +3066,6 @@ define images-for-partitions
 $(strip $(foreach item,$(1),$(INSTALLED_$(call to-upper,$(item))IMAGE_TARGET)))
 endef
 
-ifdef TARGET_NEEDS_DTBOIMAGE
-INSTALLED_DTBOIMAGE_TARGET := $(PRODUCT_OUT)/dtbo.img
-else ifdef BOARD_KERNEL_SEPARATED_DTBO
-INSTALLED_DTBOIMAGE_TARGET := $(PRODUCT_OUT)/dtbo.img
-endif
-
 # -----------------------------------------------------------------
 # vbmeta image
 ifeq ($(BOARD_AVB_ENABLE),true)
@@ -3579,133 +3574,113 @@ build_ota_package := true
 endif
 
 ifeq ($(build_otatools_package),true)
-OTATOOLS :=  $(HOST_OUT_EXECUTABLES)/minigzip \
-  $(HOST_OUT_EXECUTABLES)/aapt2 \
-  $(HOST_OUT_EXECUTABLES)/adb \
-  $(HOST_OUT_EXECUTABLES)/aapt \
-  $(HOST_OUT_EXECUTABLES)/checkvintf \
-  $(HOST_OUT_EXECUTABLES)/mkbootfs \
-  $(HOST_OUT_EXECUTABLES)/mkbootimg \
-  $(HOST_OUT_EXECUTABLES)/fs_config \
-  $(HOST_OUT_EXECUTABLES)/zipalign \
-  $(HOST_OUT_EXECUTABLES)/bsdiff \
-  $(HOST_OUT_EXECUTABLES)/imgdiff \
-  $(HOST_OUT_JAVA_LIBRARIES)/signapk.jar \
-  $(HOST_OUT_JAVA_LIBRARIES)/boot_signer.jar \
-  $(HOST_OUT_JAVA_LIBRARIES)/verity_signer.jar \
-  $(HOST_OUT_EXECUTABLES)/mke2fs \
-  $(HOST_OUT_EXECUTABLES)/mkuserimg_mke2fs \
-  $(HOST_OUT_EXECUTABLES)/e2fsdroid \
-  $(HOST_OUT_EXECUTABLES)/tune2fs \
-  $(HOST_OUT_EXECUTABLES)/mksquashfsimage.sh \
-  $(HOST_OUT_EXECUTABLES)/mksquashfs \
-  $(HOST_OUT_EXECUTABLES)/mkf2fsuserimg.sh \
-  $(HOST_OUT_EXECUTABLES)/make_f2fs \
-  $(HOST_OUT_EXECUTABLES)/sload_f2fs \
-  $(HOST_OUT_EXECUTABLES)/simg2img \
-  $(HOST_OUT_EXECUTABLES)/e2fsck \
-  $(HOST_OUT_EXECUTABLES)/generate_verity_key \
-  $(HOST_OUT_EXECUTABLES)/verity_signer \
-  $(HOST_OUT_EXECUTABLES)/verity_verifier \
-  $(HOST_OUT_EXECUTABLES)/append2simg \
-  $(HOST_OUT_EXECUTABLES)/img2simg \
-  $(HOST_OUT_EXECUTABLES)/boot_signer \
-  $(HOST_OUT_EXECUTABLES)/fec \
-  $(HOST_OUT_EXECUTABLES)/brillo_update_payload \
-  $(HOST_OUT_EXECUTABLES)/lib/shflags/shflags \
-  $(HOST_OUT_EXECUTABLES)/delta_generator \
-  $(HOST_OUT_EXECUTABLES)/care_map_generator \
-  $(HOST_OUT_EXECUTABLES)/fc_sort \
-  $(HOST_OUT_EXECUTABLES)/sefcontext_compile \
-  $(LPMAKE) \
-  $(AVBTOOL) \
-  $(BLK_ALLOC_TO_BASE_FS) \
-  $(BROTLI) \
-  $(BUILD_VERITY_METADATA) \
-  $(BUILD_VERITY_TREE)
+
+INTERNAL_OTATOOLS_MODULES := \
+  aapt \
+  aapt2 \
+  append2simg \
+  avbtool \
+  blk_alloc_to_base_fs \
+  boot_signer \
+  brillo_update_payload \
+  brotli \
+  bsdiff \
+  build_verity_metadata \
+  build_verity_tree \
+  care_map_generator \
+  checkvintf \
+  delta_generator \
+  e2fsck \
+  e2fsdroid \
+  fc_sort \
+  fec \
+  fs_config \
+  generate_verity_key \
+  img2simg \
+  imgdiff \
+  libconscrypt_openjdk_jni \
+  lpmake \
+  make_f2fs \
+  minigzip \
+  mkbootfs \
+  mkbootimg \
+  mke2fs \
+  mke2fs.conf \
+  mkf2fsuserimg.sh \
+  mksquashfs \
+  mksquashfsimage.sh \
+  mkuserimg_mke2fs \
+  sefcontext_compile \
+  shflags \
+  signapk \
+  simg2img \
+  sload_f2fs \
+  tune2fs \
+  verity_signer \
+  verity_verifier \
+  zipalign \
 
 ifeq (true,$(PRODUCT_SUPPORTS_VBOOT))
-OTATOOLS += \
-  $(FUTILITY) \
-  $(VBOOT_SIGNER)
+INTERNAL_OTATOOLS_MODULES += \
+  futility \
+  vboot_signer
 endif
 
-# Shared libraries.
-OTATOOLS += \
-  $(HOST_LIBRARY_PATH)/libc++$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/liblog$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libcutils$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libselinux$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libcrypto_utils$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libcrypto-host$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libext2fs-host$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libext2_blkid-host$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libext2_com_err-host$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libext2_e2p-host$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libext2_quota-host$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libext2_uuid-host$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libconscrypt_openjdk_jni$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libbrillo$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libbrillo-stream$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libchrome$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libevent-host$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libprotobuf-cpp-lite$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libssl-host$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libz-host$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libsparse-host$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libbase$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libpcre2$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libbrotli$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/liblp$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libext4_utils$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libfec$(HOST_SHLIB_SUFFIX) \
-  $(HOST_LIBRARY_PATH)/libsquashfs_utils$(HOST_SHLIB_SUFFIX)
-
+INTERNAL_OTATOOLS_FILES := \
+  $(filter $(HOST_OUT)/%,$(call module-installed-files,$(INTERNAL_OTATOOLS_MODULES)))
 
 .PHONY: otatools
-otatools: $(OTATOOLS)
+otatools: $(INTERNAL_OTATOOLS_FILES)
 
-BUILT_OTATOOLS_PACKAGE := $(PRODUCT_OUT)/otatools.zip
-$(BUILT_OTATOOLS_PACKAGE): zip_root := $(call intermediates-dir-for,PACKAGING,otatools)/otatools
+# For each module, recursively resolve its host shared library dependencies. Then we have a full
+# list of modules whose installed files need to be packed.
+INTERNAL_OTATOOLS_MODULES_WITH_DEPS := \
+  $(sort $(INTERNAL_OTATOOLS_MODULES) \
+      $(foreach m,$(INTERNAL_OTATOOLS_MODULES),$(call get-all-shared-libs-deps,$(m))))
 
-OTATOOLS_DEPS := \
-  system/extras/ext4_utils/mke2fs.conf \
-  $(sort $(shell find build/make/target/product/security -type f -name "*.x509.pem" -o -name "*.pk8" -o \
-      -name verity_key))
+INTERNAL_OTATOOLS_PACKAGE_FILES := \
+  $(filter $(HOST_OUT)/%,$(call module-installed-files,$(INTERNAL_OTATOOLS_MODULES_WITH_DEPS)))
+
+INTERNAL_OTATOOLS_PACKAGE_FILES += \
+  $(sort $(shell find build/make/target/product/security -type f -name "*.x509.pem" -o \
+      -name "*.pk8" -o -name verity_key))
 
 ifneq (,$(wildcard device))
-OTATOOLS_DEPS += \
+INTERNAL_OTATOOLS_PACKAGE_FILES += \
   $(sort $(shell find device $(wildcard vendor) -type f -name "*.pk8" -o -name "verifiedboot*" -o \
       -name "*.pem" -o -name "oem*.prop" -o -name "*.avbpubkey"))
 endif
 ifneq (,$(wildcard external/avb))
-OTATOOLS_DEPS += \
+INTERNAL_OTATOOLS_PACKAGE_FILES += \
   $(sort $(shell find external/avb/test/data -type f -name "testkey_*.pem" -o \
       -name "atx_metadata.bin"))
 endif
 ifneq (,$(wildcard system/update_engine))
-OTATOOLS_DEPS += \
+INTERNAL_OTATOOLS_PACKAGE_FILES += \
   $(sort $(shell find system/update_engine/scripts -name "*.pyc" -prune -o -type f -print))
 endif
-
-OTATOOLS_RELEASETOOLS := \
-  $(sort $(shell find build/make/tools/releasetools -name "*.pyc" -prune -o -type f))
-
 ifeq (true,$(PRODUCT_SUPPORTS_VBOOT))
-OTATOOLS_DEPS += \
+INTERNAL_OTATOOLS_PACKAGE_FILES += \
   $(sort $(shell find external/vboot_reference/tests/devkeys -type f))
 endif
 
-$(BUILT_OTATOOLS_PACKAGE): $(OTATOOLS) $(OTATOOLS_DEPS) $(OTATOOLS_RELEASETOOLS) $(SOONG_ZIP)
+INTERNAL_OTATOOLS_RELEASETOOLS := \
+  $(sort $(shell find build/make/tools/releasetools -name "*.pyc" -prune -o \
+      \( -type f -o -type l \) -print))
+
+BUILT_OTATOOLS_PACKAGE := $(PRODUCT_OUT)/otatools.zip
+$(BUILT_OTATOOLS_PACKAGE): PRIVATE_ZIP_ROOT := $(call intermediates-dir-for,PACKAGING,otatools)/otatools
+$(BUILT_OTATOOLS_PACKAGE): PRIVATE_OTATOOLS_PACKAGE_FILES := $(INTERNAL_OTATOOLS_PACKAGE_FILES)
+$(BUILT_OTATOOLS_PACKAGE): PRIVATE_OTATOOLS_RELEASETOOLS := $(INTERNAL_OTATOOLS_RELEASETOOLS)
+$(BUILT_OTATOOLS_PACKAGE): $(INTERNAL_OTATOOLS_PACKAGE_FILES) $(INTERNAL_OTATOOLS_RELEASETOOLS)
+$(BUILT_OTATOOLS_PACKAGE): $(SOONG_ZIP)
 	@echo "Package OTA tools: $@"
-	$(hide) rm -rf $@ $(zip_root)
-	$(hide) mkdir -p $(dir $@) $(zip_root)/bin $(zip_root)/framework $(zip_root)/releasetools
-	$(call copy-files-with-structure,$(OTATOOLS),$(HOST_OUT)/,$(zip_root))
-	$(hide) cp $(SOONG_ZIP) $(zip_root)/bin/
-	$(hide) cp -r -d -p build/make/tools/releasetools/* $(zip_root)/releasetools
-	$(hide) rm -rf $@ $(zip_root)/releasetools/*.pyc
-	$(hide) $(SOONG_ZIP) -o $@ -C $(zip_root) -D $(zip_root) \
-	  -C . $(addprefix -f ,$(OTATOOLS_DEPS))
+	rm -rf $@ $(PRIVATE_ZIP_ROOT)
+	mkdir -p $(dir $@)
+	$(call copy-files-with-structure,$(PRIVATE_OTATOOLS_PACKAGE_FILES),$(HOST_OUT)/,$(PRIVATE_ZIP_ROOT))
+	$(call copy-files-with-structure,$(PRIVATE_OTATOOLS_RELEASETOOLS),build/make/tools/,$(PRIVATE_ZIP_ROOT))
+	cp $(SOONG_ZIP) $(PRIVATE_ZIP_ROOT)/bin/
+	$(SOONG_ZIP) -o $@ -C $(PRIVATE_ZIP_ROOT) -D $(PRIVATE_ZIP_ROOT)
 
 .PHONY: otatools-package
 otatools-package: $(BUILT_OTATOOLS_PACKAGE)
@@ -3875,21 +3850,12 @@ $(BUILT_TARGET_FILES_PACKAGE): \
 	$(hide) mkdir -p $(dir $@) $(zip_root)
 ifneq (,$(INSTALLED_RECOVERYIMAGE_TARGET)$(filter true,$(BOARD_USES_RECOVERY_AS_BOOT)))
 	@# Components of the recovery image
-ifneq ($(TARGET_PREBUILT_RECOVERY_RAMDISK),)
-	$(hide) mkdir -p $(zip_root)/$(PRIVATE_RECOVERY_OUT)
-	$(hide) rm -rf $(PRODUCT_OUT)/prebuilt_recovery
-	$(hide) mkdir -p $(PRODUCT_OUT)/prebuilt_recovery
-	$(hide) unzip -o $(TARGET_PREBUILT_RECOVERY_RAMDISK) -d $(PRODUCT_OUT)/prebuilt_recovery/
-	$(hide) $(call package_files-copy-root, \
-	    $(PRODUCT_OUT)/prebuilt_recovery,$(zip_root)/$(PRIVATE_RECOVERY_OUT)/RAMDISK)
-else
 	$(hide) mkdir -p $(zip_root)/$(PRIVATE_RECOVERY_OUT)
 	$(hide) $(call package_files-copy-root, \
 	    $(TARGET_RECOVERY_ROOT_OUT),$(zip_root)/$(PRIVATE_RECOVERY_OUT)/RAMDISK)
-endif
 	@# OTA install helpers
 	$(hide) $(call package_files-copy-root, \
-		$(PRODUCT_OUT)/install,$(zip_root)/INSTALL)
+	    $(PRODUCT_OUT)/install,$(zip_root)/INSTALL)
 ifdef INSTALLED_KERNEL_TARGET
 	$(hide) cp $(INSTALLED_KERNEL_TARGET) $(zip_root)/$(PRIVATE_RECOVERY_OUT)/kernel
 endif
@@ -3963,7 +3929,6 @@ endif
 ifdef BOARD_RAMDISK_OFFSET
 	$(hide) echo "$(BOARD_RAMDISK_OFFSET)" > $(zip_root)/BOOT/ramdisk_offset
 endif
-
 ifeq ($(strip $(BOARD_KERNEL_SEPARATED_DT)),true)
 	$(hide) $(ACP) $(INSTALLED_DTIMAGE_TARGET) $(zip_root)/BOOT/dt
 endif
@@ -3971,6 +3936,12 @@ endif # BOARD_USES_RECOVERY_AS_BOOT
 	$(hide) $(foreach t,$(INSTALLED_RADIOIMAGE_TARGET),\
 	            mkdir -p $(zip_root)/RADIO; \
 	            cp $(t) $(zip_root)/RADIO/$(notdir $(t));)
+ifdef BOARD_CUSTOM_BOOTIMG
+	@# Prebuilt boot images
+	$(hide) mkdir -p $(zip_root)/BOOTABLE_IMAGES
+	$(hide) $(ACP) $(INSTALLED_BOOTIMAGE_TARGET) $(zip_root)/BOOTABLE_IMAGES/
+	$(hide) $(ACP) $(INSTALLED_RECOVERYIMAGE_TARGET) $(zip_root)/BOOTABLE_IMAGES/
+endif
 ifdef BUILDING_SYSTEM_IMAGE
 	@# Contents of the system image
 	$(hide) $(call package_files-copy-root, \
@@ -3985,12 +3956,6 @@ ifdef BUILDING_VENDOR_IMAGE
 	@# Contents of the vendor image
 	$(hide) $(call package_files-copy-root, \
 	    $(TARGET_OUT_VENDOR),$(zip_root)/VENDOR)
-endif
-ifdef BOARD_CUSTOM_BOOTIMG
-	@# Prebuilt boot images
-	$(hide) mkdir -p $(zip_root)/BOOTABLE_IMAGES
-	$(hide) $(ACP) $(INSTALLED_BOOTIMAGE_TARGET) $(zip_root)/BOOTABLE_IMAGES/
-	$(hide) $(ACP) $(INSTALLED_RECOVERYIMAGE_TARGET) $(zip_root)/BOOTABLE_IMAGES/
 endif
 ifdef BUILDING_PRODUCT_IMAGE
 	@# Contents of the product image
@@ -4101,6 +4066,9 @@ endif
 ifeq ($(TARGET_NOT_USE_GZIP_RECOVERY_RAMDISK),true)
 	$(hide) echo "no_gzip_recovery_ramdisk=true" >> $(zip_root)/META/misc_info.txt
 endif
+ifeq ($(TARGET_INCREMENTAL_BLOCK_BASED),true)
+	$(hide) echo "use_incremental_block_based=true" >> $(zip_root)/META/misc_info.txt
+endif
 ifeq ($(BOARD_AVB_ENABLE),true)
 	$(hide) echo "avb_enable=true" >> $(zip_root)/META/misc_info.txt
 	$(hide) echo "avb_vbmeta_key_path=$(BOARD_AVB_KEY_PATH)" >> $(zip_root)/META/misc_info.txt
@@ -4191,7 +4159,7 @@ ifdef BOARD_PREBUILT_ODMIMAGE
 	$(hide) mkdir -p $(zip_root)/IMAGES
 	$(hide) cp $(INSTALLED_ODMIMAGE_TARGET) $(zip_root)/IMAGES/
 endif
-ifdef INSTALLED_DTBOIMAGE_TARGET
+ifdef BOARD_PREBUILT_DTBOIMAGE
 	$(hide) mkdir -p $(zip_root)/PREBUILT_IMAGES
 	$(hide) cp $(INSTALLED_DTBOIMAGE_TARGET) $(zip_root)/PREBUILT_IMAGES/
 	$(hide) echo "has_dtbo=true" >> $(zip_root)/META/misc_info.txt
@@ -4205,7 +4173,7 @@ ifdef BOARD_AVB_DTBO_KEY_PATH
 	    >> $(zip_root)/META/misc_info.txt
 endif # BOARD_AVB_DTBO_KEY_PATH
 endif # BOARD_AVB_ENABLE
-endif # INSTALLED_DTBOIMAGE_TARGET
+endif # BOARD_PREBUILT_DTBOIMAGE
 	$(call dump-dynamic-partitions-info,$(zip_root)/META/misc_info.txt)
 	@# The radio images in BOARD_PACK_RADIOIMAGES will be additionally copied from RADIO/ into
 	@# IMAGES/, which then will be added into <product>-img.zip. Such images must be listed in
@@ -4273,7 +4241,7 @@ endif # BOARD_SUPER_PARTITION_GROUPS
 	@# help early validation of the .zip file while uploading it.
 	$(hide) find $(zip_root)/META | sort >$@.list
 	$(hide) find $(zip_root) -path $(zip_root)/META -prune -o -print | sort >>$@.list
-	$(hide) $(SOONG_ZIP) -L 0 -d -o $@ -C $(zip_root) -l $@.list
+	$(hide) $(SOONG_ZIP) -d -o $@ -C $(zip_root) -l $@.list
 
 .PHONY: target-files-package
 target-files-package: $(BUILT_TARGET_FILES_PACKAGE)
@@ -4303,6 +4271,7 @@ PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH MKBOOTIMG=$(MK
    --block \
    --extracted_input_target_files $(patsubst %.zip,%,$(BUILT_TARGET_FILES_PACKAGE)) \
    -p $(HOST_OUT) \
+   --backup=$(backuptool) \
    $(if $(OEM_OTA_CONFIG), -o $(OEM_OTA_CONFIG)) \
    $(2) \
    $(BUILT_TARGET_FILES_PACKAGE) $(1)
@@ -4326,28 +4295,24 @@ else
 $(INTERNAL_OTA_PACKAGE_TARGET): $(BROTLI)
 endif
 
-$(INTERNAL_OTA_PACKAGE_TARGET): .KATI_IMPLICIT_OUTPUTS := $(INTERNAL_OTA_METADATA)
-
 ifeq ($(TARGET_OTA_ASSERT_DEVICE),)
     OTA_SCRIPT_OVERRIDE_DEVICE := auto
 else
     OTA_SCRIPT_OVERRIDE_DEVICE := $(TARGET_OTA_ASSERT_DEVICE)
 endif
 
-ifeq ($(WITH_GMS),true)
+ifneq ($(KOMODO_BUILD),)
     $(INTERNAL_OTA_PACKAGE_TARGET): backuptool := false
-else
-ifneq ($(CUSTOM_BUILD),)
-    $(INTERNAL_OTA_PACKAGE_TARGET): backuptool := true
 else
     $(INTERNAL_OTA_PACKAGE_TARGET): backuptool := false
 endif
-endif
+
+$(INTERNAL_OTA_PACKAGE_TARGET): .KATI_IMPLICIT_OUTPUTS := $(INTERNAL_OTA_METADATA)
 
 $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) \
 	    build/make/tools/releasetools/ota_from_target_files
 	@echo "Package OTA: $@"
-	$(call build-ota-package-target,$@,-k $(KEY_CERT_PAIR) --backup=$(backuptool) --output_metadata_path $(INTERNAL_OTA_METADATA))
+	$(call build-ota-package-target,$@,-k $(KEY_CERT_PAIR) --output_metadata_path $(INTERNAL_OTA_METADATA))
 
 .PHONY: otapackage
 otapackage: $(INTERNAL_OTA_PACKAGE_TARGET)
