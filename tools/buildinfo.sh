@@ -61,6 +61,5 @@ if [ -n "$BUILD_THUMBPRINT" ] ; then
   echo "ro.build.thumbprint=$BUILD_THUMBPRINT"
 fi
 
-echo "org.pixelexperience.device=$CUSTOM_BUILD"
-
+echo "org.komodo.device=$KOMODO_BUILD"
 echo "# end build properties"
