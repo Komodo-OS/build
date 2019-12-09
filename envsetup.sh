@@ -33,7 +33,7 @@ Invoke ". build/envsetup.sh" from your shell to add the following functions to y
 
 EOF
 
-    __print_custom_functions_help
+    __print_komodo_functions_help
 
 cat <<EOF
 
@@ -143,11 +143,11 @@ function check_product()
         return
     fi
     if (echo -n $1 | grep -q -e "^komodo_") ; then
-        CUSTOM_BUILD=$(echo -n $1 | sed -e 's/^komodo_//g')
+        KOMODO_BUILD=$(echo -n $1 | sed -e 's/^komodo_//g')
     else
-        CUSTOM_BUILD=
+        KOMODO_BUILD=
     fi
-    export CUSTOM_BUILD
+    export KOMODO_BUILD
 
         TARGET_PRODUCT=$1 \
         TARGET_BUILD_VARIANT= \
@@ -686,13 +686,13 @@ function lunch()
         # if we can't find a product, try to grab it
         T=$(gettop)
         cd $T > /dev/null
-        vendor/aosp/build/tools/roomservice.py $product
+        vendor/komodo/build/tools/roomservice.py $product
         cd - > /dev/null
         check_product $product
     else
         T=$(gettop)
         cd $T > /dev/null
-        vendor/aosp/build/tools/roomservice.py $product true
+        vendor/komodo/build/tools/roomservice.py $product true
         cd - > /dev/null
     fi
 

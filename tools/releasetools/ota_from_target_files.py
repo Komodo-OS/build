@@ -920,9 +920,9 @@ else if get_stage("%(bcb_dev)s") == "3/3" then
 
   android_version = target_info.GetBuildProp("ro.build.version.release")
   build_id = target_info.GetBuildProp("ro.build.id")
-  build_date = target_info.GetBuildProp("org.pixelexperience.build_date")
+  build_date = target_info.GetBuildProp("org.komodo.build_date")
   security_patch = target_info.GetBuildProp("ro.build.version.security_patch")
-  device = target_info.GetBuildProp("org.pixelexperience.device")
+  device = target_info.GetBuildProp("org.komodo.device")
 
   script.Print("=============================================");
   script.Print("                Komodo OS ROM");
@@ -933,7 +933,7 @@ else if get_stage("%(bcb_dev)s") == "3/3" then
   script.Print(" Build date: %s"%(build_date));
   script.Print(" Security patch: %s"%(security_patch));
   script.Print(" Device: %s"%(device));
-  script.Print("----------------------------------------------");
+  script.Print("=============================================");
   device_specific.FullOTA_InstallBegin()
 
   CopyInstallTools(output_zip)
