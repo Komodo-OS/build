@@ -913,6 +913,12 @@ else if get_stage("%(bcb_dev)s") == "3/3" then
   script.Print("=============================================");
   script.Print("                Komodo OS ROM");
   script.Print("                 by Kry9toN");
+  script.Print("");
+  script.Print("     _  _____  __  __  ___  ____   ___  ");
+  script.Print("    | |/ / _ \|  \/  |/ _ \|  _ \ / _ \ ");
+  script.Print("    | ' / | | | |\/| | | | | | | | | | |");
+  script.Print("    | . \ |_| | |  | | |_| | |_| | |_| |");
+  script.Print("    |_|\_\___/|_|  |_|\___/|____/ \___/ ");
   script.Print("=============================================");
   script.Print(" Android version: %s"%(android_version));
   script.Print(" Build id: %s"%(build_id));
