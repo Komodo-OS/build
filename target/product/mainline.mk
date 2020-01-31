@@ -32,6 +32,11 @@ PRODUCT_PROPERTY_OVERRIDES += \
     ro.com.android.dataroaming=true \
 endif
 
+ifeq ($(CURRENT_BUILD_TYPE), nogapps)
+PRODUCT_PACKAGES += \
+    WallpaperPicker
+endif
+
 ifeq ($(KOMODO_BUILD),)
 PRODUCT_COPY_FILES += device/sample/etc/apns-full-conf.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/apns-conf.xml
 endif

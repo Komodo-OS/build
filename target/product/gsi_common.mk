@@ -79,6 +79,12 @@ PRODUCT_EXTRA_VNDK_VERSIONS := 28
 PRODUCT_PACKAGES += \
     WAPPushManager
 
+ifeq ($(CURRENT_BUILD_TYPE), nogapps)
+PRODUCT_PACKAGES += \
+    messaging \
+    WallpaperPicker
+endif
+
 # Telephony:
 #   Provide a APN configuration to GSI product
 ifeq ($(KOMODO_BUILD),)

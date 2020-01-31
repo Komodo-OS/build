@@ -20,4 +20,9 @@
 # /product packages
 PRODUCT_PACKAGES += \
     CarrierConfig \
-    EmergencyInfo \
+    EmergencyInfo
+
+ifeq ($(CURRENT_BUILD_TYPE), nogapps)
+PRODUCT_PACKAGES += \
+     Dialer
+endif
