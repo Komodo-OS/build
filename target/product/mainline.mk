@@ -28,6 +28,11 @@ ifeq ($(KOMODO_BUILD),)
 $(call inherit-product, frameworks/base/data/sounds/AllAudio.mk)
 endif
 
+ifeq ($(CURRENT_BUILD_TYPE), nogapps)
+PRODUCT_PACKAGES += \
+    WallpaperPicker
+endif
+
 ifeq ($(KOMODO_BUILD),)
 PRODUCT_COPY_FILES += device/sample/etc/apns-full-conf.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/apns-conf.xml
 endif

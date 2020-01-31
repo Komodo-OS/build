@@ -15,3 +15,7 @@
 #
 $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
 
+ifeq ($(CURRENT_BUILD_TYPE), nogapps)
+PRODUCT_PACKAGES += \
+    messaging
+endif
