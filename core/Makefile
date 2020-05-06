@@ -1910,6 +1910,7 @@ $(RECOVERY_INSTALL_OTA_KEYS): $(SOONG_ZIP) $(OTA_PUBLIC_KEYS) $(extra_keys)
 RECOVERYIMAGE_ID_FILE := $(PRODUCT_OUT)/recovery.id
 
 define build-recoveryramdisk
+  @echo ${CL_GRN}"----- Generating Changelog ------"${CL_RST}
   $(hide) ./vendor/komodo/tools/changelog.sh
   $(hide) mv $(PRODUCT_OUT)/Changelog.txt $(PRODUCT_OUT)/$(KOMODO_VERSION)-Changelog.txt
   @echo ----- Making recovery image ------
