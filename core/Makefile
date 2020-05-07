@@ -1912,7 +1912,7 @@ RECOVERYIMAGE_ID_FILE := $(PRODUCT_OUT)/recovery.id
 define build-recoveryramdisk
   @echo ${CL_GRN}"----- Generating Changelog ------"${CL_RST}
   $(hide) ./vendor/komodo/tools/changelog.sh
-  $(hide) mv $(PRODUCT_OUT)/Changelog.txt $(PRODUCT_OUT)/$(KOMODO_VERSION)-Changelog.txt
+  #$(hide) mv $(PRODUCT_OUT)/Changelog.txt $(PRODUCT_OUT)/$(KOMODO_VERSION)-Changelog.txt
   @echo ----- Making recovery image ------
   $(hide) mkdir -p $(TARGET_RECOVERY_OUT)
   $(hide) mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/sdcard $(TARGET_RECOVERY_ROOT_OUT)/tmp
@@ -2338,8 +2338,8 @@ endif
 
 # $(1): output file
 define build-systemimage-target
-  $(hide) ./vendor/aosp/tools/changelog.sh
-  $(hide) mv $(PRODUCT_OUT)/Changelog.txt $(PRODUCT_OUT)/$(KOMODO_VERSION)-Changelog.txt
+ # $(hide) ./vendor/komodo/tools/changelog.sh
+ # $(hide) mv $(PRODUCT_OUT)/Changelog.txt $(PRODUCT_OUT)/$(KOMODO_VERSION)-Changelog.txt
   @echo "Target system fs image: $(1)"
   $(call create-system-vendor-symlink)
   $(call create-system-product-symlink)
