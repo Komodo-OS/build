@@ -931,14 +931,19 @@ else if get_stage("%(bcb_dev)s") == "3/3" then
   device = target_info.GetBuildProp("org.komodo.device")
 
   script.Print("=============================================");
-  script.Print("                Komodo OS ROM");
-  script.Print("                 by Kry9toN");
   script.Print("");
-  script.Print("     _  _____  __  __  ___  ____   ___  ");
-  script.Print("    | |/ / _ \|  \/  |/ _ \|  _ \ / _ \ ");
-  script.Print("    | ' / | | | |\/| | | | | | | | | | |");
-  script.Print("    | . \ |_| | |  | | |_| | |_| | |_| |");
-  script.Print("    |_|\_\___/|_|  |_|\___/|____/ \___/ ");
+  script.Print("       __ ______  __  _______  ____  ____  ");
+  script.Print("      / //_/ __ \/  |/  / __ \/ __ \/ __ \ ");
+  script.Print("     / ,< / / / / /|_/ / / / / / / / / / / ");
+  script.Print("    / /| / /_/ / /  / / /_/ / /_/ / /_/ /  ");
+  script.Print("   /_/ |_\____/_/  /_/\____/_____/\____/   ");
+  script.Print("             ______     ______    ");
+  script.Print("            /\  __ \   /\  ___\   ");
+  script.Print("            \ \ \/\ \  \ \___  \  ");
+  script.Print("             \ \_____\  \/\_____\ ");
+  script.Print("              \/_____/   \/_____/ ");
+  script.Print("");
+  script.Print("               by Komodo OS Team");
   script.Print("=============================================");
   script.Print(" Android version: %s"%(android_version));
   script.Print(" Build id: %s"%(build_id));
