@@ -23,11 +23,11 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/media_product.mk)
 # /product packages
 PRODUCT_PACKAGES += \
     Camera2 \
+    KomodoQuickStep \
     Contacts \
     DeskClock \
     Gallery2 \
     LatinIME \
-    Launcher3QuickStep \
     Music \
     OneTimeInitializer \
     Provision \
@@ -41,7 +41,7 @@ PRODUCT_PACKAGES += \
 ifeq ($(CURRENT_BUILD_TYPE), nogapps)
 PRODUCT_PACKAGES += \
     Browser2 \
-    Calendar \
+    Calendar
 endif
 
 PRODUCT_PACKAGES_DEBUG += \
