@@ -1300,7 +1300,7 @@ else if get_stage("%(bcb_dev)s") == "3/3" then
   script.Print("             \ \_____\  \/\_____\ ");
   script.Print("              \/_____/   \/_____/ ");
   script.Print("");
-  script.Print("               by Komodo OS Team");
+  script.Print("               by Komodo OS Team | Aye aye ");
   script.Print("=============================================");
   script.Print(" Android version: %s"%(android_version));
   script.Print(" Build id: %s"%(build_id));
