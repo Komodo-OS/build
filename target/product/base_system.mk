@@ -387,7 +387,7 @@ PRODUCT_PACKAGES_DEBUG := \
     unwind_symbols \
 
 ifneq ($(KOMODO_BUILD),)
-PRODUCT_PACKAGES_DEBUG := \
+PRODUCT_PACKAGES_DEBUG += \
     su
 endif
 
