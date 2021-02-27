@@ -53,6 +53,6 @@ if [ -n "$BUILD_THUMBPRINT" ] ; then
   echo "ro.build.thumbprint=$BUILD_THUMBPRINT"
 fi
 
-echo "ro.komodo.device=$KOMODO_DEVICE"
+echo "org.komodo.device=$KOMODO_DEVICE"
 
 echo "# end build properties"
