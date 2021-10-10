@@ -5391,14 +5391,8 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(OTA_FROM_TARGET_
 	@echo "Package OTA: $@"
 	$(call build-ota-package-target,$@,-k $(KEY_CERT_PAIR) --output_metadata_path $(INTERNAL_OTA_METADATA))
 
-ARROW_TARGET_PACKAGE := $(PRODUCT_OUT)/$(ARROW_VERSION).zip
-
-.PHONY: otapackage bacon
+.PHONY: otapackage
 otapackage: $(INTERNAL_OTA_PACKAGE_TARGET)
-bacon: otapackage
-	$(hide) ln -f $(INTERNAL_OTA_PACKAGE_TARGET) $(ARROW_TARGET_PACKAGE)
-	$(hide) $(MD5SUM) $(ARROW_TARGET_PACKAGE) > $(ARROW_TARGET_PACKAGE).md5sum
-	@echo "**Package complete"**: $(ARROW_TARGET_PACKAGE)"
 
 ifeq ($(BOARD_BUILD_RETROFIT_DYNAMIC_PARTITIONS_OTA_PACKAGE),true)
 name := $(product_name)-ota-retrofit-$(FILE_NAME_TAG)
